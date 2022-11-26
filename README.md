@@ -70,7 +70,11 @@ mqtt:
       name: MaraX Heating Active
       unique_id: marax.heating
       value_template: "{{ value_json.heating }}"
+      icon: mdi:heat-wave
 ```
+
+![Home Assistant sensor list](./doc/ha-sensors.png)
+![Home Assistant sensor detail](./doc/ha-detail.png)
 
 ## Close Up Pictures
 
