@@ -22,12 +22,12 @@ Monitor MaraX data from MQTT, with a Raspberry Pico W and CircuitPython
 ## Configuration
 
 - Copy `adafruit_bitmap_font`, `adafruit_display_text`, `adafruit_minimqtt` and `adafruit_st7789.mpy` to `lib/`
-- Copy `env.example` as `.env` to the Pico and edit it, filling out WiFi and MQTT details.
+- Copy `env.example` as `.env` to the Pico and edit it, filling out WiFi and MQTT details
 - Copy `code.py` to the Pico
 
 ## Connections
 
-- Connect RX, TX and GND from the 6-pin debug interface under the Mara X to Pico pins 1, 2 and 3 (`GP0`, `GP1` and `GND`). Then swap pins 1 and 2, because it never works on the first try. Refer to Similar Projects section for detailed pictures on where to connect on the Mara X.
+- Connect RX, TX and GND from the 6-pin debug interface under the Mara X to Pico pins 1, 2 and 3 (`GP0`, `GP1` and `GND`). Then swap pins 1 and 2, because it never works on the first try. Refer to Similar Projects section for detailed pictures on where to connect on the Mara X
 
 - Stick the MC-38 reed switch (white in the pictures) to the side of the pump (green for me, your colour may vary)
 
@@ -96,3 +96,4 @@ Ribbon cable coming out from the MaraX and gets connected to board.
 - [Pimp My Mara-X](https://github.com/michelhe/pimp-my-marax)
 - [marax_monitor](https://github.com/bancbanus/marax_monitor)
 - [MaraX_Visualizer](https://gitlab.com/jousis/marax_visualizer)
+- [Mara X Meter](https://github.com/Jerey/mara-x-meter)
