@@ -313,7 +313,7 @@ def process_uart(realtime = False):
 	try:
 		heating_state = int(line_parts[5])
 		data[3] = True if heating_state == 1 else False if heating_state == 0 else None
-		if heating is None:
+		if data[3] is None:
 			print("unknown heating_state", line_parts[5], heating_state)
 	except Exception as e:
 		print("invalid heating_state", line_parts[5], e)
@@ -366,7 +366,6 @@ def main():
 
 	label_main = None
 	label_last = None
-
 
 	scr = create_screen()
 	display.show(scr[0])
