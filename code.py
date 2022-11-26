@@ -9,6 +9,7 @@ import board
 import digitalio
 import json
 import supervisor
+import traceback
 
 # display
 import busio
@@ -40,7 +41,7 @@ mag_switch = digitalio.DigitalInOut(board.GP9)
 mag_switch.switch_to_input(pull=digitalio.Pull.UP)
 
 # https://docs.circuitpython.org/en/latest/shared-bindings/busio/
-marax_uart = busio.UART(board.GP0, board.GP1, baudrate=9600, timeout=1)
+marax_uart = busio.UART(board.GP0, board.GP1, baudrate=9600, timeout=1, receiver_buffer_size=64)
 
 led_red = pwmio.PWMOut(board.GP6)
 led_green = pwmio.PWMOut(board.GP7)
@@ -86,46 +87,16 @@ def set_led(r = None, g = None, b = None):
 
 set_led(0, 0, 5)
 
-### Code ###
-# Define callback methods which are called when events occur
-# pylint: disable=unused-argument, redefined-outer-name
 def connect(mqtt_client, userdata, flags, rc):
-    # This function will be called when the mqtt_client is connected
-    # successfully to the broker.
     print("Connected to MQTT Broker!")
     print("Flags: {0}\n RC: {1}".format(flags, rc))
     led.value = False
 
-
 def disconnect(mqtt_client, userdata, rc):
-    # This method is called when the mqtt_client disconnects
-    # from the broker.
     print("Disconnected from MQTT Broker!")
 
-
-def subscribe(mqtt_client, userdata, topic, granted_qos):
-    # This method is called when the mqtt_client subscribes to a new feed.
-    print("Subscribed to {0} with QOS level {1}".format(topic, granted_qos))
-
-
-def unsubscribe(mqtt_client, userdata, topic, pid):
-    # This method is called when the mqtt_client unsubscribes from a feed.
-    print("Unsubscribed from {0} with PID {1}".format(topic, pid))
-
-
 def publish(mqtt_client, userdata, topic, pid):
-    # This method is called when the mqtt_client publishes data to a feed.
     print("Published to {0} with PID {1}".format(topic, pid))
-
-
-def message(client, topic, message):
-    # Method called when a client's subscribed feed has a new value.
-    print("New message on topic {0}: {1}".format(topic, message))
-
-
-wifi.radio.connect(os.getenv('WIFI_SSID'), os.getenv('WIFI_PASSWORD'))
-
-mqtt_client = None
 
 def setup_mqtt():
 	global mqtt_client
@@ -144,12 +115,7 @@ def setup_mqtt():
 
 	mqtt_client.on_connect = connect
 	mqtt_client.on_disconnect = disconnect
-	mqtt_client.on_subscribe = subscribe
-	mqtt_client.on_unsubscribe = unsubscribe
 	mqtt_client.on_publish = publish
-	mqtt_client.on_message = message
-
-display = None
 
 def setup_display():
 	global display
@@ -293,46 +259,6 @@ def pump_changed(val: boolean):
 def uart_changed(data: string):
 	mqtt_client.publish(os.getenv('MQTT_MARAX_UART_STATUS'), "offline" if data is None else data)
 
-def startup_screen():
-	global display
-
-	g = displayio.Group()
-	border_offset = 120
-	g.append(draw_border(border_color=0x0000AA, border_offset=border_offset))
-	g.append(draw_inner(bg_color=0x0088FF, border_offset=border_offset))
-	display.show(g)
-	display.refresh()
-
-setup_display()
-startup_screen()
-if main_font_file is not None:
-	main_font = bitmap_font.load_font(main_font_file)
-
-setup_mqtt()
-print("Attempting to connect to %s" % mqtt_client.broker)
-mqtt_client.connect(keep_alive=10)
-
-old_pump_val = is_pump_on()
-pump_led(old_pump_val) # set up leds
-cur_time = None
-start_time = None
-last_time = None
-prev_last_time = None
-
-first_run = True
-
-steam_temp = None
-steam_temp_target = None
-boiler_temp = None
-heating = None
-
-# steam_temp = 87
-# steam_temp = 90
-# steam_temp_target = 90
-# boiler_temp = 96
-# heating = True
-#heating = False
-
 def process_uart(realtime = False):
 	global marax_uart
 
@@ -344,6 +270,7 @@ def process_uart(realtime = False):
 	if not realtime and marax_uart.in_waiting > 32:
 		marax_uart.reset_input_buffer()
 
+	print("uart readline...")
 	line = marax_uart.readline()
 	# line = "C1.23,050,140,042,1186,1"
 	print("uart:",line)
@@ -394,125 +321,212 @@ def process_uart(realtime = False):
 
 	return valid, data
 
+def startup_screen():
+	global display
 
-label_main = None
-label_last = None
+	g = displayio.Group()
+	border_offset = 120
+	g.append(draw_border(border_color=0x0000AA, border_offset=border_offset))
+	g.append(draw_inner(bg_color=0x0088FF, border_offset=border_offset))
+	display.show(g)
+	display.refresh()
 
-scr = create_screen()
-display.show(scr[0])
-show_console = False
+def setup():
+	global main_font_file, mqtt_client
+
+	setup_display()
+	startup_screen()
+	if main_font_file is not None:
+		main_font = bitmap_font.load_font(main_font_file)
+
+	setup_mqtt()
+	print("Attempting to connect to %s" % mqtt_client.broker)
+	mqtt_client.connect(keep_alive=10)
+
+	global old_pump_val
+	old_pump_val = is_pump_on()
+	pump_led(old_pump_val) # set up leds
+
+
+def main():
+	global display, old_pump_val, switch_b, mqtt_client
+
+	first_run = True
+
+	cur_time = None
+	start_time = None
+	last_time = None
+	prev_last_time = None
+
+
+	steam_temp = None
+	steam_temp_target = None
+	boiler_temp = None
+	heating = None
+
+	label_main = None
+	label_last = None
+
+
+	scr = create_screen()
+	display.show(scr[0])
+	display.refresh()
+
+	show_console = False
 
 #  0   1     2             3                   4           5       
 # (g, ind, border_pumping, border_not_pumping, label_main, label_last)
 
-last_valid_uart = time.monotonic()
+	last_valid_uart = time.monotonic()
+	last_mqtt_ping = last_valid_uart
+	while True:
+		state_changed = False
+
+		# poll faster if pump is on
+		if old_pump_val:
+			pass
+	#		time.sleep(0.1)
+		else:
+			time.sleep(0.2)
+
+			# if not switch_a.value:
+			# 	heating = not heating
+			# 	print("switching heating %s" % heating)
+			# 	state_changed = True
+			if not switch_b.value:
+				show_console = not show_console
+				display.show(None if show_console else scr[0])
+				time.sleep(1)
+			# if not switch_x.value:
+			# 	if steam_temp is None:
+			# 		steam_temp = 89
+			# 	steam_temp += 1
+			# 	state_changed = True
+			# 	print("increase steam_temp to %d" % steam_temp)
+			# if not switch_y.value:
+			# 	if steam_temp is None:
+			# 		steam_temp = 90
+			# 	steam_temp -= 1
+			# 	state_changed = True
+			# 	print("decrease steam_temp to %d" % steam_temp)
+
+			# if state_changed: # keypress
+				# time.sleep(1)
+
+		mqtt_client.loop() # maintain connection
+
+		# Do pump
+		pump_val = is_pump_on()
+		if pump_val and start_time is not None:
+			cur_time = time.monotonic() - start_time
+
+		if pump_val is not old_pump_val:
+			old_pump_val = pump_val
+			pump_changed(pump_val)
+			pump_led(pump_val)
+			state_changed = True
+			if pump_val:
+				start_time = time.monotonic()
+				cur_time = 0
+			else:
+				last_time = cur_time
+				start_time = None
+			scr[2].hidden = not pump_val
+			scr[3].hidden = pump_val
+
+		# Do UART
+		uart_valid, uart_data = process_uart(pump_val)
+
+		# Make sure we have MQTT after UART data comes back
+		if time.monotonic()	- last_mqtt_ping > 5:
+			print("mqtt ping")
+			try:
+				mqtt_client.ping()
+			except BrokenPipeError:
+				mqtt_client.reconnect()
+				mqtt_client.ping()
+			last_mqtt_ping = time.monotonic()
+
+		copy_vars = uart_valid
+		if uart_valid:
+			last_valid_uart = time.monotonic()
+		else:
+			if time.monotonic() - last_valid_uart > 5:
+				copy_vars = True
+
+		if copy_vars:
+		# steam_temp, target, boiler_temp, heating
+			if steam_temp != uart_data[0]:
+				steam_temp = uart_data[0]
+				state_changed = True
+			if steam_temp_target != uart_data[1]:
+				steam_temp_target = uart_data[1]
+				state_changed = True
+			if boiler_temp != uart_data[2]:
+				boiler_temp = uart_data[2]
+				state_changed = True
+			if heating != uart_data[3]:
+				heating = uart_data[3]
+				state_changed = True
+			if state_changed:
+				if steam_temp is None and steam_temp_target is None and boiler_temp is None and heating is None:
+					uart_changed(None)
+				else:
+					uart_changed(json.dumps({"steam_temp":steam_temp, "steam_temp_target":steam_temp_target, "boiler_temp":boiler_temp, "heating":1 if heating else 0}))
+
+		# Do screen
+		if state_changed or pump_val or first_run:
+			update_indicators(scr[1][0], scr[1][1], scr[1][2], scr[1][3], steam_temp=steam_temp, steam_temp_target=steam_temp_target, boiler_temp=boiler_temp, heating=heating)
+
+			if last_time is not None and prev_last_time != last_time:
+				scr[5].text = "Last:%.2fs" % (last_time)
+				prev_last_time = last_time
+
+			if pump_val:
+				scr[4].text = "Shot: %.2fs" % cur_time
+			elif heating is not None and not heating:
+				if steam_temp is None or steam_temp_target is None:
+					scr[4].text = "Ready?"
+				elif steam_temp < steam_temp_target:
+					scr[4].text = "Ready"
+				else:
+					scr[4].text = "READY"
+			elif heating is not None and heating:
+				scr[4].text = "Not ready"
+			elif heating is None:
+				scr[4].text = "?"
+			else:
+				scr[4].text = "??" # should not happen
+
+			first_run = False
+			display.refresh()
+
+
+# main
+wifi.radio.connect(os.getenv('WIFI_SSID'), os.getenv('WIFI_PASSWORD'))
+mqtt_client = None
+display = None
+old_pump_val = False
+
+try:
+	setup()
+except Exception as e:
+	display.show(None)
+	print("=== Exception, will reboot in 10")
+	print(''.join(traceback.format_exception(None, e, e.__traceback__)))
+	time.sleep(10)
+	microcontroller.reset()
 
 while True:
-	state_changed = False
-
-	# poll faster if pump is on
-	if old_pump_val:
-		pass
-#		time.sleep(0.1)
-	else:
-		time.sleep(0.2)
-
-		# if not switch_a.value:
-		# 	heating = not heating
-		# 	print("switching heating %s" % heating)
-		# 	state_changed = True
-		if not switch_b.value:
-			show_console = not show_console
-			display.show(None if show_console else scr[0])
+	try:
+		main()
+	except Exception as e:
+		display.show(None)
+		print("=== Exception, will restart in 10... B to reset")
+		print(''.join(traceback.format_exception(None, e, e.__traceback__)))
+		for i in range(10):
+			if not switch_b.value:
+				print("resetting")
+				microcontroller.reset()
 			time.sleep(1)
-		# if not switch_x.value:
-		# 	if steam_temp is None:
-		# 		steam_temp = 89
-		# 	steam_temp += 1
-		# 	state_changed = True
-		# 	print("increase steam_temp to %d" % steam_temp)
-		# if not switch_y.value:
-		# 	if steam_temp is None:
-		# 		steam_temp = 90
-		# 	steam_temp -= 1
-		# 	state_changed = True
-		# 	print("decrease steam_temp to %d" % steam_temp)
-
-		# if state_changed: # keypress
-			# time.sleep(1)
-
-	mqtt_client.loop() # maintain connection
-
-	# Do pump
-	pump_val = is_pump_on()
-	if pump_val and start_time is not None:
-		cur_time = time.monotonic() - start_time
-
-	if pump_val is not old_pump_val:
-		old_pump_val = pump_val
-		pump_changed(pump_val)
-		pump_led(pump_val)
-		state_changed = True
-		if pump_val:
-			start_time = time.monotonic()
-			cur_time = 0
-		else:
-			last_time = cur_time
-			start_time = None
-		scr[2].hidden = not pump_val
-		scr[3].hidden = pump_val
-
-	# Do UART
-	uart_valid, uart_data = process_uart(pump_val)
-	copy_vars = uart_valid
-	if uart_valid:
-		last_valid_uart = time.monotonic()
-	else:
-		if time.monotonic() - last_valid_uart > 5:
-			copy_vars = True
-
-	if copy_vars:
-	# steam_temp, target, boiler_temp, heating
-		if steam_temp != uart_data[0]:
-			steam_temp = uart_data[0]
-			state_changed = True
-		if steam_temp_target != uart_data[1]:
-			steam_temp_target = uart_data[1]
-			state_changed = True
-		if boiler_temp != uart_data[2]:
-			boiler_temp = uart_data[2]
-			state_changed = True
-		if heating != uart_data[3]:
-			heating = uart_data[3]
-			state_changed = True
-		if state_changed:
-			if steam_temp is None and steam_temp_target is None and boiler_temp is None and heating is None:
-				uart_changed(None)
-			else:
-				uart_changed(json.dumps({"steam_temp":steam_temp, "steam_temp_target":steam_temp_target, "boiler_temp":boiler_temp, "heating":1 if heating else 0}))
-
-	# Do screen
-	if state_changed or pump_val or first_run:
-		update_indicators(scr[1][0], scr[1][1], scr[1][2], scr[1][3], steam_temp=steam_temp, steam_temp_target=steam_temp_target, boiler_temp=boiler_temp, heating=heating)
-
-		if last_time is not None and prev_last_time != last_time:
-			scr[5].text = "Last:%.2fs" % (last_time)
-			prev_last_time = last_time
-
-		if pump_val:
-			scr[4].text = "Shot: %.2fs" % cur_time
-		elif heating is not None and not heating:
-			if steam_temp is None or steam_temp_target is None:
-				scr[4].text = "Ready?"
-			elif steam_temp < steam_temp_target:
-				scr[4].text = "Ready"
-			else:
-				scr[4].text = "READY"
-		elif heating is not None and heating:
-			scr[4].text = "Not ready"
-		elif heating is None:
-			scr[4].text = "?"
-		else:
-			scr[4].text = "??" # should not happen
-
-		display.refresh()
+		print("restarting...")
