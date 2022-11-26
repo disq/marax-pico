@@ -2,29 +2,38 @@
 
 Monitor MaraX data from MQTT, with a Raspberry Pico W and CircuitPython
 
+![overview](./doc/overall.jpeg)
+![close up](./doc/close_up.jpeg)
+
 ## Requirements
 
 ### Hardware
 
 - [Raspberry Pico W](https://shop.pimoroni.com/products/raspberry-pi-pico-w)
 - [Pico Display Pack 2.0](https://shop.pimoroni.com/products/pico-display-pack-2-0)
+- [Pico Omnibus](https://shop.pimoroni.com/products/pico-omnibus) or some kind of breadboard or creative soldering to connect 5 wires
 - `MC-38` reed switch
 - [Lelit Mara X](https://lelit.com/product/marax-pl62x/) coffee machine
 
 ### Software
-- CircuitPython
+- CircuitPython and Adafruit libraries
 - Running WiFi, MQTT server, Home Assistant (optional)
 
 ## Configuration
 
-Copy `env.example` as `.env` to the Pico and edit it, filling out WiFi and MQTT details.
-Copy `code.py` to the Pico
+- Copy `adafruit_bitmap_font`, `adafruit_display_text`, `adafruit_minimqtt` and `adafruit_st7789.mpy` to `lib/`
+- Copy `env.example` as `.env` to the Pico and edit it, filling out WiFi and MQTT details.
+- Copy `code.py` to the Pico
 
 ## Connections
 
 - Connect RX, TX and GND from the 6-pin debug interface under the Mara X to Pico pins 1, 2 and 3 (`GP0`, `GP1` and `GND`). Then swap pins 1 and 2, because it never works on the first try. Refer to Similar Projects section for detailed pictures on where to connect on the Mara X.
 
+- Stick the MC-38 reed switch (white in the pictures) to the side of the pump (green for me, your colour may vary)
+
 - Connect two wires from the MC-38 reed switch to Pico pin 12 and 13 (`GP9` and `GND`)
+
+- If using Pico Omnibus, take special care to where the pins are, as the decks are mirrored (a pin on the left side of the Pico would be on the right side connector on the Omnibus)
 
 - Power the Pico preferably from USB or separate 5v supply. Pin 1 on the Mara X supposedly has 12v (you'd need a step down regulator) but it wasn't reliable for me or maybe my connector has slightly popped off.
 
@@ -63,10 +72,23 @@ mqtt:
       value_template: "{{ value_json.heating }}"
 ```
 
+## Close Up Pictures
+
+![overview](./doc/innards_overview.jpeg)
+Overview. 4 wires on the debug connector, 2 wires connected to the white wires from the reed switch.
+
+![pump detail](./doc/innards_pump.jpeg)
+Detailed shot of the reed switch on the Pump (green)
+
+![conn detail](./doc/innards_connector.jpeg)
+Debug connector, 4 wires going in, and 2 wires from reed switch
+
+![connector](./doc/connector.jpeg)
+Ribbon cable comes from the MaraX and gets connected to board.
+
 ## Similar Projects
 
-[Lelit MaraX - Data Visualisation 'Mod'](https://www.home-barista.com/espresso-machines/lelit-marax-data-visualisation-mod-t66187.html)
-[Pimp My Mara-X](https://github.com/michelhe/pimp-my-marax)
-[marax_monitor](https://github.com/bancbanus/marax_monitor)
-[MaraX_Visualizer](https://gitlab.com/jousis/marax_visualizer)
-
+- [Lelit MaraX - Data Visualisation 'Mod'](https://www.home-barista.com/espresso-machines/lelit-marax-data-visualisation-mod-t66187.html)
+- [Pimp My Mara-X](https://github.com/michelhe/pimp-my-marax)
+- [marax_monitor](https://github.com/bancbanus/marax_monitor)
+- [MaraX_Visualizer](https://gitlab.com/jousis/marax_visualizer)
