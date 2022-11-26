@@ -16,7 +16,7 @@ Monitor MaraX data from MQTT, with a Raspberry Pico W and CircuitPython
 - [Lelit Mara X](https://lelit.com/product/marax-pl62x/) coffee machine
 
 ### Software
-- CircuitPython and Adafruit libraries
+- [CircuitPython](https://circuitpython.org/board/raspberry_pi_pico_w/) and [Adafruit libraries](https://github.com/adafruit/circuitpython)
 - Running WiFi, MQTT server, Home Assistant (optional)
 
 ## Configuration
@@ -75,16 +75,20 @@ mqtt:
 ## Close Up Pictures
 
 ![overview](./doc/innards_overview.jpeg)
+
 Overview. 4 wires on the debug connector, 2 wires connected to the white wires from the reed switch.
 
 ![pump detail](./doc/innards_pump.jpeg)
+
 Detailed shot of the reed switch on the Pump (green)
 
 ![conn detail](./doc/innards_connector.jpeg)
+
 Debug connector, 4 wires going in, and 2 wires from reed switch
 
 ![connector](./doc/connector.jpeg)
-Ribbon cable comes from the MaraX and gets connected to board.
+
+Ribbon cable coming out from the MaraX and gets connected to board.
 
 ## Similar Projects
 
