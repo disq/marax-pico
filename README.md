@@ -73,8 +73,8 @@ mqtt:
       icon: mdi:heat-wave
 ```
 
-![Home Assistant sensor list](./doc/ha-sensors.png)
-![Home Assistant sensor detail](./doc/ha-detail.png)
+![Home Assistant sensor list](./doc/ha-sensors-sm.png)
+![Home Assistant sensor detail](./doc/ha-detail-sm.png)
 
 ## Close Up Pictures
 
