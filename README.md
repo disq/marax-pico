@@ -61,10 +61,15 @@ mqtt:
       unit_of_measurement: "°C"
       icon: mdi:pot-steam-outline
     - state_topic: "marax/uart/data"
-      name: MaraX Steam Temperature Target
-      unique_id: marax.steam.temp.target
-      value_template: "{{ value_json.steam_temp_target }}"
+      name: MaraX Temperature Target
+      unique_id: marax.temp.target
+      value_template: "{{ value_json.temp_target }}"
       unit_of_measurement: "°C"
+      icon: mdi:bullseye
+    - state_topic: "marax/uart/data"
+      name: MaraX Counter
+      unique_id: marax.counter
+      value_template: "{{ value_json.counter }}"
       icon: mdi:bullseye
     - state_topic: "marax/uart/data"
       name: MaraX Heating Active
