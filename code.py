@@ -60,16 +60,19 @@ uart_logging = True
 pump_reed_switch_threshold = 700
 
 def is_pump_on():
-	global pump_last_off_time, pump_reed_switch_threshold
+	global pump_last_off_time, pump_reed_switch_threshold, led
 
 	is_on = not mag_switch.value
 	if is_on:
+		set_led(100, 0, 0)
 		pump_last_off_time = None
 		return True
 
 	ts = supervisor.ticks_ms()
 	if pump_last_off_time is None:
 		pump_last_off_time = ts
+
+	set_led(0, 100, 0) # led reflects mag_switch
 
 	if ts - pump_last_off_time < pump_reed_switch_threshold:
 		return True # off, but we assume on until 700ms threshold has passed
@@ -92,10 +95,13 @@ set_led(0, 0, 5)
 def connect(mqtt_client, userdata, flags, rc):
     print("Connected to MQTT Broker!")
     print("Flags: {0}\n RC: {1}".format(flags, rc))
+    global led
     led.value = False
 
 def disconnect(mqtt_client, userdata, rc):
     print("Disconnected from MQTT Broker!")
+    global led
+    led.value = True
 
 def publish(mqtt_client, userdata, topic, pid):
     print("Published to {0} with PID {1}".format(topic, pid))
@@ -256,15 +262,6 @@ def create_screen(border_offset=60, font_scale=None):
 
 	return (g, ind, border_pumping, border_not_pumping, label_main, label_last)
 
-def pump_led(is_on: boolean):
-	global led;
-	led.value = is_on
-
-	if is_on:
-		set_led(100, 0, 0)
-	else:
-		set_led(0, 100, 0)
-
 def pump_changed(val: boolean):
 	mqtt_client.publish(os.getenv('MQTT_MARAX_PUMP_STATUS'), "on" if val else "off")
 
@@ -388,7 +385,6 @@ def setup():
 
 	global old_pump_val
 	old_pump_val = is_pump_on()
-	pump_led(old_pump_val) # set up leds
 	ind[1].text = 'OK'
 
 
@@ -451,7 +447,6 @@ def main():
 		if pump_val is not old_pump_val:
 			old_pump_val = pump_val
 			pump_changed(pump_val)
-			pump_led(pump_val)
 			state_changed = True
 			if pump_val:
 				start_time = supervisor.ticks_ms()

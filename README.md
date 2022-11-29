@@ -4,6 +4,7 @@ Monitor MaraX data from MQTT, with a Raspberry Pico W and CircuitPython
 
 ![overview](./doc/overall.jpeg)
 ![close up](./doc/close_up.jpeg)
+![video/gif pulling a shot](./doc/shot.gif)
 
 ## Requirements
 
