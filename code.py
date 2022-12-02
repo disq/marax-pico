@@ -188,7 +188,7 @@ def prepare_indicators(border_offset=60):
 	steam = gfx_box(170, 0xBBBBBB, width=120, text_color=0x333333)
 	counter = gfx_box(220, 0xDDDDDD, width=70, text_color=0x333333, start_y=215)
 
-	return (heating_on, heating_off, heating_unknown, steam, counter)
+	return [heating_on, heating_off, heating_unknown, steam, counter]
 
 def update_indicators(heating_on_ind, heating_off_ind, heating_unknown_ind, steam_ind, counter_ind, steam_temp=None, temp_target=None, boiler_temp=None, heating=None, counter=None):
 	# deg = "°C"
@@ -225,12 +225,11 @@ def update_indicators(heating_on_ind, heating_off_ind, heating_unknown_ind, stea
 		steam_ind[0].hidden = False
 		steam_ind[1].text = "%d%s" % (steam_temp, deg)
 
-	if counter_ind is not None:
-		if counter is None:
-			counter_ind[0].hidden = True
-		else:
-			counter_ind[0].hidden = False
-			counter_ind[1].text = str(counter)
+	if counter is None:
+		counter_ind[0].hidden = True
+	else:
+		counter_ind[0].hidden = False
+		counter_ind[1].text = str(counter)
 
 def create_screen(border_offset=60, font_scale=None):
 	border_offset_half = border_offset // 2
