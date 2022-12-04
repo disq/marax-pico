@@ -64,20 +64,17 @@ def is_pump_on():
 
 	is_on = not mag_switch.value
 	if is_on:
-		set_led(100, 0, 0)
 		pump_last_off_time = None
-		return True
+		return (True, is_on)
 
 	ts = supervisor.ticks_ms()
 	if pump_last_off_time is None:
 		pump_last_off_time = ts
 
-	set_led(0, 100, 0) # led reflects mag_switch
-
 	if ts - pump_last_off_time < pump_reed_switch_threshold:
-		return True # off, but we assume on until 700ms threshold has passed
+		return (True, is_on) # off, but we assume on until 700ms threshold has passed
 
-	return False
+	return (False, is_on)
 
 def duty_cycle(percent):
 	return 65535 - int(percent / 100.0 * 65535.0 * led_brightness)
@@ -91,6 +88,30 @@ def set_led(r = None, g = None, b = None):
 		led_blue.duty_cycle = duty_cycle(b)
 
 set_led(0, 0, 5)
+
+last_led_update = None
+last_led_blink = False
+
+def do_led(pump_real_val, no_water = False):
+	if not no_water:
+		# led reflects mag_switch
+		if pump_real_val:
+			set_led(100, 0, 0) 
+		else:
+			set_led(0, 100, 0)
+		return
+
+	global last_led_update, last_led_blink
+
+	# no water
+	ts = supervisor.ticks_ms()
+	if last_led_update is None or last_led_update < ts + 250:
+		last_led_update = ts
+		if last_led_blink:
+			set_led(100, 0, 100)
+		else:
+			set_led(100, 100, 0)
+		last_led_blink = not last_led_blink
 
 def connect(mqtt_client, userdata, flags, rc):
     print("Connected to MQTT Broker!")
@@ -383,7 +404,9 @@ def setup():
 	mqtt_client.connect(keep_alive=10)
 
 	global old_pump_val
-	old_pump_val = is_pump_on()
+	(old_pump_val, real_val) = is_pump_on()
+	do_led(real_val)
+
 	ind[1].text = 'OK'
 
 
@@ -424,10 +447,7 @@ def main():
 		state_changed = False
 
 		# poll faster if pump is on
-		if old_pump_val:
-			pass
-	#		time.sleep(0.1)
-		else:
+		if not old_pump_val:
 			time.sleep(0.2)
 
 			if not switch_b.value:
@@ -439,7 +459,7 @@ def main():
 		mqtt_client.loop() # maintain connection
 
 		# Do pump
-		pump_val = is_pump_on()
+		(pump_val, pump_real_val) = is_pump_on()
 		if pump_val and start_time is not None:
 			cur_time = supervisor.ticks_ms() - start_time
 
@@ -498,6 +518,8 @@ def main():
 					uart_changed(None)
 				else:
 					uart_changed(json.dumps({"steam_temp":steam_temp, "temp_target":temp_target, "boiler_temp":boiler_temp, "heating":1 if heating else 0, "counter":counter}))
+
+		do_led(pump_real_val, temp_target is not None and temp_target == 0)
 
 		# Do screen
 		if state_changed or pump_val or first_run:
