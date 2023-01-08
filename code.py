@@ -57,7 +57,7 @@ main_font_file = None
 
 pump_last_off_time = supervisor.ticks_ms()
 uart_logging = True
-pump_reed_switch_threshold = 700
+pump_reed_switch_threshold = 1200
 
 def is_pump_on():
 	global pump_last_off_time, pump_reed_switch_threshold, led
@@ -531,7 +531,7 @@ def main():
 
 			if pump_val:
 				scr[4].text = "Shot: %.2fs" % (cur_time/1000)
-			elif temp_target == 0:
+			elif temp_target == 0 and counter == 0:
 				scr[4].text = "No Water?"
 			elif heating is not None:
 				if boiler_temp is None or temp_target is None or temp_target < 80:
