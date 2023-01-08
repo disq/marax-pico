@@ -21,6 +21,10 @@ from adafruit_bitmap_font import bitmap_font
 from adafruit_st7789 import ST7789
 import pwmio
 
+DISPLAY_SETTINGS = (320, 240, 270, 0, 0) # width, height, rotation, rowstart, colstart # Pico Display 2.0
+# DISPLAY_SETTINGS = (280, 240, 90, 20, 0) # width, height, rotation, rowstart, colstart # Aliexpress 240x280 rounded corner display
+DISPLAY_PINS = (board.GP17, board.GP16, board.GP19, board.GP18, board.GP20) # CS, DC, SPI_MOSI, SPI_CLK, Backlight
+
 # switch_a = digitalio.DigitalInOut(board.GP12)
 # switch_a.switch_to_input(pull=digitalio.Pull.UP)
 
@@ -147,20 +151,14 @@ def setup_mqtt():
 	mqtt_client.on_publish = publish
 
 def setup_display():
-	global display
+	global display, DISPLAY_SETTINGS, DISPLAY_PINS
 
 	# Release any resources currently in use for the displays
 	displayio.release_displays()
 
-	tft_cs = board.GP17
-	tft_dc = board.GP16
-	spi_mosi = board.GP19
-	spi_clk = board.GP18
-	spi = busio.SPI(spi_clk, spi_mosi)
-	backlight = board.GP20
-
-	display_bus = displayio.FourWire(spi, command=tft_dc, chip_select=tft_cs)
-	display = ST7789(display_bus, rotation=270, width=320, height=240, backlight_pin=backlight, auto_refresh=True)
+	spi = busio.SPI(DISPLAY_PINS[3], DISPLAY_PINS[2])
+	display_bus = displayio.FourWire(spi, command=DISPLAY_PINS[1], chip_select=DISPLAY_PINS[0])
+	display = ST7789(display_bus, rotation=DISPLAY_SETTINGS[2], width=DISPLAY_SETTINGS[0], height=DISPLAY_SETTINGS[1], backlight_pin=DISPLAY_PINS[4], auto_refresh=True, rowstart=DISPLAY_SETTINGS[3], colstart=DISPLAY_SETTINGS[4])
 
 # returns the group and the label
 def gfx_box(x, bg_color, start_y=5, width=100, height=20, text_color=0x000000, text=None):
@@ -174,29 +172,33 @@ def gfx_box(x, bg_color, start_y=5, width=100, height=20, text_color=0x000000, t
 
 # returns the group
 def draw_border(border_color=0x00FF00, border_offset=60):
+	global DISPLAY_SETTINGS
+
 	border_offset_half = border_offset // 2
 
 	g = displayio.Group()
 	color_palette = displayio.Palette(1)
 	color_palette[0] = border_color
-	# g.append(vectorio.Rectangle(pixel_shader=color_palette, width=320, height=240, x=0, y=0))
+	# g.append(vectorio.Rectangle(pixel_shader=color_palette, width=DISPLAY_SETTINGS[0], height=DISPLAY_SETTINGS[1], x=0, y=0))
 
 	# Draw border in clockwise fashion:
 	#   _      _        _         _
 	#     =>    |   =>  _|   =>  |_|
-	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=320, height=border_offset_half, x=0, y=0))
-	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=border_offset_half, height=240-border_offset, x=320-border_offset_half, y=border_offset_half))
-	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=320, height=border_offset_half, x=0, y=240-border_offset_half))
-	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=border_offset_half, height=240-border_offset, x=0, y=border_offset_half))
+	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=DISPLAY_SETTINGS[0], height=border_offset_half, x=0, y=0))
+	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=border_offset_half, height=DISPLAY_SETTINGS[1]-border_offset, x=DISPLAY_SETTINGS[0]-border_offset_half, y=border_offset_half))
+	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=DISPLAY_SETTINGS[0], height=border_offset_half, x=0, y=DISPLAY_SETTINGS[1]-border_offset_half))
+	g.append(vectorio.Rectangle(pixel_shader=color_palette, width=border_offset_half, height=DISPLAY_SETTINGS[1]-border_offset, x=0, y=border_offset_half))
 	return g
 
 # returns only the rect
 def draw_inner(bg_color=0x0000AA, border_offset=60):
+	global DISPLAY_SETTINGS
+
 	border_offset_half = border_offset // 2
 
 	inner_palette = displayio.Palette(1)
 	inner_palette[0] = bg_color
-	return vectorio.Rectangle(pixel_shader=inner_palette, width=320-border_offset, height=240-border_offset, x=border_offset_half, y=border_offset_half)
+	return vectorio.Rectangle(pixel_shader=inner_palette, width=DISPLAY_SETTINGS[0]-border_offset, height=DISPLAY_SETTINGS[1]-border_offset, x=border_offset_half, y=border_offset_half)
 
 # returns 5 indicators, each a tuple of group, label
 def prepare_indicators(border_offset=60):
